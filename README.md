@@ -289,11 +289,26 @@ letterbox-list-generator/
 
 GitHub Actions automatically:
 - ✅ Lints code with flake8 and pylint
-- ✅ Runs all 278+ tests
-- ✅ Builds and pushes Docker images
-- ✅ Creates pre-releases on main branch
+- ✅ Runs all 266+ tests
+- ✅ Builds and pushes Docker images to GHCR
+- ✅ Creates pre-releases on main branch pushes
+- ✅ Creates production releases on version tags
 
-See `.github/GITHUB_ACTIONS_SETUP.md` for setup instructions.
+### Release Workflow
+
+**Pre-Releases (Automatic)**
+- Push to `main` → Creates `v0.0.1-pre.3`
+- Images tagged: `latest-pre`
+
+**Production Releases (Manual)**
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+- Images tagged: `v1.0.0`, `1.0`, `1`, `latest`
+- Full GitHub release created with changelog
+
+See `.github/GITHUB_ACTIONS_SETUP.md` for detailed instructions.
 
 ## Contributing
 

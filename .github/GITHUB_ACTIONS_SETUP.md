@@ -56,16 +56,42 @@ When code is pushed to the `main` branch:
 
 **First Release**: When there are no existing tags, the workflow will create `v0.0.1-pre.1` and show the last 20 commits in the changelog.
 
-## Creating a Full Release
+## Creating a Production Release
 
-To create a full (non-pre) release:
+The workflow automatically creates production releases when you push a version tag. This will:
+- Run all tests and linting
+- Create a GitHub release (non-prerelease)
+- Build and push Docker images with production tags
 
+### Steps to Create a Production Release:
+
+**Option 1: Command Line (Recommended)**
+```bash
+# Create and push a version tag
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+**Option 2: GitHub UI**
 1. Go to **Releases** in your GitHub repository
 2. Click **Draft a new release**
-3. Choose a tag (e.g., `v1.0.0`)
-4. Fill in the release notes
-5. Uncheck **Set as a pre-release**
+3. Click **Choose a tag** → Type a new tag (e.g., `v1.0.0`)
+4. Click **Create new tag: v1.0.0 on publish**
+5. Title: "Release v1.0.0"
 6. Click **Publish release**
+
+### What Happens:
+
+When you push a tag like `v1.0.0`, the workflow will:
+1. ✅ Run tests and linting
+2. 🐳 Build Docker image
+3. 🏷️ Tag images as:
+   - `ghcr.io/YOUR_USERNAME/letterbox-list-generator:v1.0.0`
+   - `ghcr.io/YOUR_USERNAME/letterbox-list-generator:1.0`
+   - `ghcr.io/YOUR_USERNAME/letterbox-list-generator:1`
+   - `ghcr.io/YOUR_USERNAME/letterbox-list-generator:latest`
+4. 📝 Create GitHub release with auto-generated changelog
+5. 🚀 Push images to GitHub Container Registry
 
 ## Disabling Pre-Releases
 
