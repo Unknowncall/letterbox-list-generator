@@ -28,8 +28,13 @@ class TestGetTMDbConfig:
         assert config['api_key'] == 'test_api_key'
         assert config['v4_access_token'] == 'test_token'
 
-    def test_get_config_with_defaults(self):
+    def test_get_config_with_defaults(self, monkeypatch):
         """Test configuration with default values"""
+        # Clear environment variables to test defaults
+        monkeypatch.delenv('TMDB_SYNC_ENABLED', raising=False)
+        monkeypatch.delenv('TMDB_API_KEY', raising=False)
+        monkeypatch.delenv('TMDB_V4_ACCESS_TOKEN', raising=False)
+
         config = get_tmdb_config()
 
         assert config['enabled'] is False
