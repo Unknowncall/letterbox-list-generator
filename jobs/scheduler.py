@@ -6,7 +6,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv
 import pytz
-from jobs.fetch_top_movies import run_sync_job
+from jobs.sync_to_tmdb import run_sync_job
 
 # Load environment variables
 load_dotenv()
@@ -90,8 +90,8 @@ def init_scheduler() -> None:
             func=run_sync_job,
             trigger=trigger,
             args=[config['target_users']],
-            id='fetch_top_movies',
-            name='Fetch Top 15 Movies',
+            id='sync_to_tmdb',
+            name='Sync Top Rated Movies to TMDb',
             replace_existing=True,
             misfire_grace_time=3600  # Allow 1 hour grace period for missed jobs
         )
@@ -103,7 +103,7 @@ def init_scheduler() -> None:
             f"  - Schedule: {config['schedule']}\n"
             f"  - Timezone: {config['timezone']}\n"
             f"  - Target users: {', '.join(config['target_users'])}\n"
-            f"  - Next run: {scheduler.get_job('fetch_top_movies').next_run_time}"
+            f"  - Next run: {scheduler.get_job('sync_to_tmdb').next_run_time}"
         )
         
     except pytz.exceptions.UnknownTimeZoneError:

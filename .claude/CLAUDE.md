@@ -46,8 +46,7 @@ letterbox-list-generator/
 ├── jobs/
 │   ├── __init__.py
 │   ├── scheduler.py           # APScheduler configuration
-│   ├── fetch_top_movies.py    # Cron job for fetching top movies
-│   └── sync_to_tmdb.py        # TMDb list synchronization job
+│   └── sync_to_tmdb.py        # TMDb list synchronization job (scheduled cron job)
 └── tests/
     ├── __init__.py
     ├── conftest.py            # Shared test fixtures
@@ -59,7 +58,6 @@ letterbox-list-generator/
     ├── test_schemas.py        # Pydantic model tests
     ├── test_pagination.py     # Pagination utility tests
     ├── test_scheduler.py      # Scheduler tests
-    ├── test_fetch_top_movies.py  # Cron job tests
     └── test_sync_to_tmdb.py   # TMDb sync job tests
 ```
 
@@ -242,7 +240,7 @@ Initializes and starts the background scheduler:
 1. Validates configuration
 2. Creates BackgroundScheduler with timezone
 3. Parses cron expression
-4. Registers fetch_top_movies job
+4. Registers sync_to_tmdb job
 5. Starts scheduler
 6. Logs next run time
 
@@ -254,33 +252,7 @@ Initializes and starts the background scheduler:
 #### `shutdown_scheduler() -> None`
 Gracefully stops the scheduler (called on app shutdown).
 
-### 8. Fetch Top Movies Job (`jobs/fetch_top_movies.py`)
-
-Cron job that fetches top 15 movies for specified users.
-
-#### `fetch_top_movies_job(usernames: List[str]) -> None`
-Async function that processes each user:
-1. Logs start time and user count
-2. For each username:
-   - Fetches top 15 rated films (sorted by rating DESC)
-   - Logs each film with title, year, rating
-   - Handles errors per-user (continues on failure)
-3. Logs completion
-
-**Configuration:**
-- Fixed limit: 15 movies
-- Sort: By rating (descending)
-- Page size: 15
-
-#### `run_sync_job(usernames: List[str]) -> None`
-Synchronous wrapper for APScheduler (creates new event loop).
-
-**Extensibility:**
-The job logs results by default. You can extend it to:
-- Save to database
-- Send email notifications
-- Generate reports
-- Update external systems
+**Note:** The scheduler is configured to run the `sync_to_tmdb` job, which automatically fetches top-rated movies from Letterboxd and syncs them to TMDb lists. See the TMDb Integration section below for details.
 
 ---
 
@@ -369,12 +341,17 @@ Workflow (per user):
 4. For each user:
    - Gets existing list ID from mapping, or creates new list
    - List name: `"{username}'s Top Rated Movies"`
-   - Fetches top 100 rated & liked films from Letterboxd
+   - Fetches top-rated & liked films from Letterboxd (configurable via .env)
    - Clears existing list contents
    - Searches each film on TMDb
    - Adds matched movies to user's TMDb list
    - Logs detailed results
 5. Saves updated list mappings
+
+**Configurable Parameters (via .env):**
+- `TMDB_SYNC_LIMIT`: Maximum number of movies to sync per user (default: 20, range: 1-1000)
+- `TMDB_SYNC_SORT_BY`: Sort field - `rating`, `title`, or `year` (default: rating)
+- `TMDB_SYNC_SORT_ORDER`: Sort order - `asc` or `desc` (default: desc)
 
 **Features:**
 - **One list per user** - Each user gets a separate TMDb list
@@ -487,6 +464,11 @@ TMDB_V4_ACCESS_TOKEN=your_v4_token_here
 # Enable/disable TMDb sync
 TMDB_SYNC_ENABLED=true
 
+# TMDb Sync Parameters (optional, with defaults)
+TMDB_SYNC_LIMIT=20            # Max movies to sync per user (1-1000)
+TMDB_SYNC_SORT_BY=rating         # Sort by: rating, title, or year
+TMDB_SYNC_SORT_ORDER=desc        # Sort order: asc or desc
+
 # Note: List IDs are automatically managed in tmdb_list_mappings.json
 # Each user gets their own list named "{username}'s Top Rated Movies"
 ```
@@ -537,31 +519,29 @@ from jobs.sync_to_tmdb import run_sync_job
 run_sync_job(['username1', 'username2'])
 ```
 
-#### Option 3: Automated Scheduling
+#### Option 3: Automated Scheduling (Default)
 
-The sync job can be scheduled with APScheduler (similar to existing cron jobs).
+The sync job is **already configured** to run automatically via the cron scheduler. When you enable `CRON_ENABLED=true` in your `.env` file, the TMDb sync job will run on the schedule you configure.
 
-**Example: Schedule TMDb sync after fetching top movies**
+**Current Configuration:**
+- The scheduler in `jobs/scheduler.py` is already set up to run `sync_to_tmdb`
+- Configure schedule via `CRON_SCHEDULE` (e.g., `0 0 * * *` for daily at midnight)
+- Set target users via `CRON_TARGET_USERS` (e.g., `username1,username2`)
+- Enable TMDb sync via `TMDB_SYNC_ENABLED=true`
 
-```python
-# In jobs/scheduler.py
-from jobs.sync_to_tmdb import run_sync_job
-
-# Add as a separate scheduled job
-scheduler.add_job(
-    func=run_sync_job,
-    trigger=CronTrigger.from_crontab('0 1 * * *'),  # Daily at 1 AM
-    args=[['username1', 'username2']],
-    id='sync_to_tmdb',
-    name='Sync to TMDb',
-    replace_existing=True
-)
+**Example .env configuration:**
+```bash
+CRON_ENABLED=true
+CRON_SCHEDULE=0 0 * * *
+CRON_TIMEZONE=UTC
+CRON_TARGET_USERS=username1,username2
+TMDB_SYNC_ENABLED=true
 ```
 
 **Which option to use?**
-- **API endpoint**: Best for manual/on-demand syncing, webhooks, or external triggers
-- **Python function**: Best for custom scripts or integrations
-- **Scheduled job**: Best for automated daily/weekly syncing
+- **Scheduled job (Option 3)**: Best for automated daily/weekly syncing (RECOMMENDED - already configured)
+- **API endpoint (Option 1)**: Best for manual/on-demand syncing, webhooks, or external triggers
+- **Python function (Option 2)**: Best for custom scripts or integrations
 
 ### Workflow Example (Per-User Lists)
 
@@ -846,6 +826,14 @@ CRON_ENABLED=true
 CRON_SCHEDULE=0 0 * * *
 CRON_TIMEZONE=UTC
 CRON_TARGET_USERS=ian_fried
+
+# TMDb Sync Configuration
+TMDB_SYNC_ENABLED=true
+TMDB_API_KEY=your_api_key_here
+TMDB_V4_ACCESS_TOKEN=your_v4_token_here
+TMDB_SYNC_LIMIT=100
+TMDB_SYNC_SORT_BY=rating
+TMDB_SYNC_SORT_ORDER=desc
 ```
 
 **Cron Schedule Format (Crontab):**
@@ -1186,12 +1174,23 @@ INFO:jobs.scheduler:Scheduler started successfully:
   - Target users: ian_fried
   - Next run: 2025-11-08 00:00:00+00:00
 
-INFO:jobs.fetch_top_movies:[2025-11-08 00:00:00] Starting top movies fetch job for 1 user(s)
-INFO:jobs.fetch_top_movies:Fetching top 15 movies for user: ian_fried
-INFO:jobs.fetch_top_movies:Successfully fetched 15 top movies for ian_fried
-INFO:jobs.fetch_top_movies:  1. Pulp Fiction (1994) - Rating: 5.0/5.0
-INFO:jobs.fetch_top_movies:  2. The Godfather (1972) - Rating: 5.0/5.0
-INFO:jobs.fetch_top_movies:[2025-11-08 00:00:00] Completed top movies fetch job
+INFO:jobs.sync_to_tmdb:[2025-11-08 00:00:00] Starting TMDb sync job for 1 user(s) (one list per user)
+============================================================
+INFO:jobs.sync_to_tmdb:Processing user: ian_fried
+============================================================
+INFO:jobs.sync_to_tmdb:Using existing TMDb list ID 12345 for ian_fried
+INFO:jobs.sync_to_tmdb:Fetching top movies for ian_fried...
+INFO:jobs.sync_to_tmdb:Found 100 top-rated films for ian_fried
+INFO:services.tmdb_service:Cleared list 12345
+INFO:services.tmdb_service:Matched: The Godfather (1972) -> TMDb ID 238
+INFO:services.tmdb_service:Matched: Pulp Fiction (1994) -> TMDb ID 680
+INFO:services.tmdb_service:Added 98 movies to list 12345
+INFO:jobs.sync_to_tmdb:Successfully synced ian_fried's list (ID: 12345):
+  - Total films: 100
+  - Matched on TMDb: 98
+  - Added to list: 98
+  - Not matched: 2
+INFO:jobs.sync_to_tmdb:[2025-11-08 00:00:15] Completed TMDb sync job
 ```
 
 ### Disabled State
@@ -1202,7 +1201,7 @@ INFO:jobs.scheduler:Cron job is disabled (CRON_ENABLED=false)
 ### Error Handling
 ```
 ERROR:jobs.scheduler:Invalid cron expression: invalid expression
-ERROR:jobs.fetch_top_movies:Error fetching top movies for invalid_user: User not found
+ERROR:jobs.sync_to_tmdb:Error processing invalid_user: User not found
 ```
 
 ---
@@ -1263,9 +1262,9 @@ All controller functions are async to support non-blocking operations.
 ### Database Integration
 The cron job is designed to be extended with database storage:
 ```python
-# In fetch_top_movies.py, after fetching results:
+# In sync_to_tmdb.py, after syncing to TMDb:
 # Save to database
-await save_top_movies_to_db(username, films)
+await save_sync_history_to_db(username, films, sync_result)
 ```
 
 ### Notification System
@@ -1337,7 +1336,8 @@ tests/
 ├── test_schemas.py              # Pydantic model validation tests
 ├── test_pagination.py           # Pagination utility tests
 ├── test_scheduler.py            # Scheduler configuration tests
-└── test_fetch_top_movies.py     # Cron job tests
+├── test_sync_to_tmdb.py         # TMDb sync job tests
+└── test_tmdb_service.py         # TMDb service tests
 ```
 
 ### Test Configuration Files
@@ -1509,13 +1509,21 @@ def test_example(mock_env_vars):
    - `init_scheduler()` - Success and error scenarios
    - `shutdown_scheduler()` - All shutdown scenarios
 
-7. **`jobs/fetch_top_movies.py`** - 100%
-   - `fetch_top_movies_job()` - Single and multiple users
+7. **`jobs/sync_to_tmdb.py`** - 100%
+   - `sync_to_tmdb_job()` - Single and multiple users
+   - List creation and reuse per user
    - Error handling and continuation
    - Logging format verification
    - `run_sync_job()` - Async wrapper execution
+   - Configurable parameters from environment
 
-8. **`index.py`** - 100%
+8. **`services/tmdb_service.py`** - 100%
+   - Movie search and matching
+   - List creation and management
+   - Film sync workflow
+   - Error handling
+
+9. **`index.py`** - 100%
    - Health check endpoint
    - App configuration and lifespan events
    - Startup event (scheduler initialization)
@@ -2073,7 +2081,7 @@ curl "http://localhost:8000/users/ian_fried/top-rated?limit=10&page_size=10"
 
 **Cron Jobs:**
 - `jobs/scheduler.py` - Scheduler configuration
-- `jobs/fetch_top_movies.py` - Job implementation
+- `jobs/sync_to_tmdb.py` - TMDb sync job implementation
 
 **Tests:**
 - `tests/conftest.py` - Shared fixtures

@@ -63,6 +63,10 @@ def get_tmdb_config() -> dict:
         'enabled': os.getenv('TMDB_SYNC_ENABLED', 'false').lower() == 'true',
         'api_key': os.getenv('TMDB_API_KEY', ''),
         'v4_access_token': os.getenv('TMDB_V4_ACCESS_TOKEN', ''),
+        'limit': int(os.getenv('TMDB_SYNC_LIMIT', '100')),
+        'page_size': int(os.getenv('TMDB_SYNC_LIMIT', '100')),
+        'sort_by': os.getenv('TMDB_SYNC_SORT_BY', 'rating'),
+        'sort_order': os.getenv('TMDB_SYNC_SORT_ORDER', 'desc'),
     }
 
 
@@ -152,11 +156,11 @@ async def sync_to_tmdb_job(usernames: List[str]) -> None:
 
                 result = await get_top_rated_films(
                     username=username,
-                    limit=15,
+                    limit=config['limit'],
                     page=1,
-                    page_size=15,
-                    sort_by="rating",
-                    sort_order="desc"
+                    page_size=config['page_size'],
+                    sort_by=config['sort_by'],
+                    sort_order=config['sort_order']
                 )
 
                 films = result.get('films', [])
