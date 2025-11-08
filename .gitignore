@@ -2,6 +2,10 @@
 __pycache__
 .env
 
+# Logs
+logs/
+*.log
+
 # Test coverage
 .coverage
 .coverage.*

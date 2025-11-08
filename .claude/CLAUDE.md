@@ -18,6 +18,7 @@ A FastAPI-based web service that integrates with Letterboxd to provide user prof
 ```
 letterbox-list-generator/
 ├── index.py                    # Main application entry point
+├── logger.py                   # Centralized logging configuration
 ├── requirements.txt            # Python dependencies
 ├── Makefile                    # Build and development commands
 ├── .env                        # Environment configuration
@@ -28,9 +29,14 @@ letterbox-list-generator/
 ├── docker-compose.yml          # Docker Compose orchestration
 ├── pytest.ini                  # Pytest configuration
 ├── .coveragerc                 # Test coverage configuration
+├── .pylintrc                   # Pylint linting configuration
+├── .pre-commit-config.yaml     # Pre-commit hooks configuration
 ├── CRON_SETUP.md              # Cron job documentation
 ├── TESTING.md                  # Comprehensive testing guide
 ├── postman_collection.json     # API testing collection
+├── logs/                       # Application logs directory
+│   ├── app.log                # All logs (with rotation)
+│   └── error.log              # Error logs only
 ├── controllers/
 │   └── users.py               # Business logic for user operations
 ├── routers/
@@ -337,39 +343,30 @@ Automated job that fetches top-rated movies and syncs each user to their own TMD
 Workflow (per user):
 1. Validates TMDb configuration
 2. Initializes TMDb service
-3. Loads existing list mappings from `tmdb_list_mappings.json`
-4. For each user:
-   - Gets existing list ID from mapping, or creates new list
-   - List name: `"{username}'s Top Rated Movies"`
+3. For each user:
+   - Queries TMDb API to find existing list by name: `"{username}'s Top Rated Movies"`
+   - If list doesn't exist on TMDb, creates a new one
    - Fetches top-rated & liked films from Letterboxd (configurable via .env)
    - Clears existing list contents
    - Searches each film on TMDb
    - Adds matched movies to user's TMDb list
    - Logs detailed results
-5. Saves updated list mappings
 
 **Configurable Parameters (via .env):**
-- `TMDB_SYNC_LIMIT`: Maximum number of movies to sync per user (default: 20, range: 1-1000)
+- `TMDB_SYNC_LIMIT`: Maximum number of movies to sync per user (default: 100, range: 1-1000)
 - `TMDB_SYNC_SORT_BY`: Sort field - `rating`, `title`, or `year` (default: rating)
 - `TMDB_SYNC_SORT_ORDER`: Sort order - `asc` or `desc` (default: desc)
 
 **Features:**
 - **One list per user** - Each user gets a separate TMDb list
-- **Persistent mappings** - List IDs stored in `tmdb_list_mappings.json`
+- **API-based list discovery** - Always queries TMDb API to find existing lists (no local caching)
+- **Automatic list creation** - Creates lists on TMDb if they don't exist
 - Processes multiple users sequentially
 - Continues on per-user errors (isolates failures)
 - No duplicate handling needed (each user has own list)
-- Sorts by rating before syncing
+- Configurable sort options via environment variables
 - Logs unmatched films per user
 - Comprehensive error handling
-
-**List Mapping Storage:**
-```json
-{
-  "ian_fried": 12345,
-  "username2": 67890
-}
-```
 
 #### 3. On-Demand API Endpoint (`routers/jobs.py`)
 
@@ -465,11 +462,11 @@ TMDB_V4_ACCESS_TOKEN=your_v4_token_here
 TMDB_SYNC_ENABLED=true
 
 # TMDb Sync Parameters (optional, with defaults)
-TMDB_SYNC_LIMIT=20            # Max movies to sync per user (1-1000)
-TMDB_SYNC_SORT_BY=rating         # Sort by: rating, title, or year
-TMDB_SYNC_SORT_ORDER=desc        # Sort order: asc or desc
+TMDB_SYNC_LIMIT=100           # Max movies to sync per user (1-1000)
+TMDB_SYNC_SORT_BY=rating      # Sort by: rating, title, or year
+TMDB_SYNC_SORT_ORDER=desc     # Sort order: asc or desc
 
-# Note: List IDs are automatically managed in tmdb_list_mappings.json
+# Note: Lists are automatically discovered via TMDb API by name
 # Each user gets their own list named "{username}'s Top Rated Movies"
 ```
 
@@ -554,13 +551,10 @@ TMDB_SYNC_ENABLED=true
 2. Trigger sync (via API, Python, or cron)
    └─ POST /jobs/sync-tmdb {"usernames": ["user1", "user2"]}
 
-3. Load existing list mappings
-   └─ Read tmdb_list_mappings.json
-       {"user1": 12345}  (user2 not yet synced)
-
-4. Process user1:
+3. Process user1:
    ├─ Log: "Processing user: user1"
-   ├─ Found existing list mapping: ID 12345
+   ├─ Query TMDb API for list: "user1's Top Rated Movies"
+   ├─ Found existing list on TMDb: ID 12345
    ├─ Fetch top 100 rated & liked films from Letterboxd
    ├─ Log: "Found 85 top-rated films for user1"
    ├─ Clear existing TMDb list 12345
@@ -574,9 +568,10 @@ TMDB_SYNC_ENABLED=true
            - Added to list: 82
            - Not matched: 3"
 
-5. Process user2:
+4. Process user2:
    ├─ Log: "Processing user: user2"
-   ├─ No existing mapping, create new list
+   ├─ Query TMDb API for list: "user2's Top Rated Movies"
+   ├─ List not found on TMDb, create new list
    ├─ Created: "user2's Top Rated Movies" (ID: 67890)
    ├─ Fetch top 100 rated & liked films from Letterboxd
    ├─ Log: "Found 73 top-rated films for user2"
@@ -587,13 +582,8 @@ TMDB_SYNC_ENABLED=true
            - Added to list: 70
            - Not matched: 3"
 
-6. Save updated mappings
-   └─ Write tmdb_list_mappings.json
-       {"user1": 12345, "user2": 67890}
-
-7. Job completion
+5. Job completion
    └─ Log: "Completed TMDb sync job"
-       List mappings saved: 2 users
 
 Result on TMDb:
 - user1's Top Rated Movies (ID: 12345) → 82 films
@@ -673,38 +663,27 @@ Created new TMDb list for user1:
 Created new TMDb list for user2:
   - Name: user2's Top Rated Movies
   - ID: 67890
-
-List mappings saved: 2 users
 ```
 
-Resulting `tmdb_list_mappings.json`:
-```json
-{
-  "user1": 12345,
-  "user2": 67890
-}
+**Subsequent Runs:**
+```
+Query TMDb API for "user1's Top Rated Movies" → Found existing list (ID: 12345)
+Query TMDb API for "user2's Top Rated Movies" → Found existing list (ID: 67890)
 ```
 
-**Subsequent Runs (Mappings Exist):**
-```
-Using existing TMDb list ID 12345 for user1
-Using existing TMDb list ID 67890 for user2
-```
+Lists are cleared and repopulated with latest top movies on each run.
 
-Lists are cleared and repopulated with latest top movies.
-
-**Manual Management:**
-
-You can manually edit `tmdb_list_mappings.json` to:
-- Point a user to a different list ID
-- Remove a user (will create new list on next run)
-- Share a list ID between users (not recommended, but possible)
+**How It Works:**
+- **API-based discovery** - Always queries TMDb API to find existing lists by name
+- **Automatic list creation** - Creates new list if not found on TMDb
+- **No local state** - No cached mappings or configuration files
+- **Always up-to-date** - Reflects current state on TMDb (even if lists are deleted externally)
 
 **No Configuration Needed!**
 - No `.env` variables for list IDs
-- Fully automatic list creation and tracking
-- Lists persist across runs
-- Safe to delete mappings file (will recreate lists)
+- No local database or mapping files
+- Fully automatic list discovery via API
+- Lists persist on TMDb across runs
 
 #### Movie Matching Strategy
 
@@ -774,15 +753,24 @@ ERROR: Invalid API key: You must be granted a valid key
 #### List Not Updating
 
 **Check:**
-- `tmdb_list_mappings.json` contains correct list IDs
-- Lists exist on TMDb and you have permissions
+- Lists exist on TMDb with the exact name format: `"{username}'s Top Rated Movies"`
+- You have permissions to modify the lists on TMDb
 - V4 token has write access
 - Check server logs for sync errors
+- Verify the TMDb API can be reached
 
-**Reset list mappings:**
+**Troubleshooting:**
 ```bash
-# Delete the mappings file to recreate all lists on next run
-rm tmdb_list_mappings.json
+# Check if the service can find your list
+# Look for log messages like:
+# "Found existing TMDb list: {username}'s Top Rated Movies (ID: 12345)"
+# or
+# "Creating new TMDb list: {username}'s Top Rated Movies"
+
+# If list exists on TMDb but sync fails, check:
+# - List permissions (you must be the owner)
+# - TMDb API rate limits
+# - Network connectivity
 ```
 
 ### Extension Ideas
@@ -884,6 +872,14 @@ pytest-mock==3.12.0       # Enhanced mocking
 httpx==0.26.0            # Required by FastAPI TestClient
 ```
 
+**Linting and Code Quality:**
+```
+pylint==3.0.3            # Python linter
+black==23.12.1           # Code formatter
+isort==5.13.2            # Import sorter
+pre-commit==3.6.0        # Pre-commit hook framework
+```
+
 ---
 
 ## Development Commands (`Makefile`)
@@ -907,6 +903,15 @@ make test-verbose      # Run tests with verbose output
 make test-cov          # Run tests with coverage report
 make test-cov-html     # Run tests and generate HTML coverage report
 make test-watch        # Run tests in watch mode (re-run on file changes)
+```
+
+**Linting and Code Quality:**
+```bash
+make lint              # Run pylint on source code
+make format            # Format code with black and isort
+make lint-fix          # Format code and run linter
+make pre-commit-install # Install pre-commit hooks
+make pre-commit-run    # Run all pre-commit hooks manually
 ```
 
 **Docker Commands:**
@@ -1564,6 +1569,386 @@ See `TESTING.md` for comprehensive testing documentation including:
 
 ---
 
+## Logging
+
+The project uses a centralized logging configuration for consistent log formatting and management across all modules.
+
+### Centralized Logger
+
+**Location:** `logger.py`
+
+All modules import and use the same logger instance:
+
+```python
+from logger import logger
+
+logger.info("This is an info message")
+logger.warning("This is a warning")
+logger.error("This is an error")
+logger.debug("This is a debug message")
+```
+
+### Log Configuration
+
+**Format:**
+```
+YYYY-MM-DD HH:MM:SS - logger_name - LEVEL - message
+```
+
+**Example:**
+```
+2025-11-07 23:32:14 - letterbox - INFO - Starting TMDb sync job for 1 user(s)
+2025-11-07 23:32:15 - letterbox - ERROR - Failed to create TMDb list for user
+```
+
+### Log Outputs
+
+The logger writes to multiple destinations:
+
+1. **Console (stdout)** - All log levels (INFO and above)
+   - Real-time feedback during development
+   - Captured by Docker logs
+
+2. **app.log** - All log levels (INFO and above)
+   - Location: `logs/app.log`
+   - Rotating file handler (10MB per file, 5 backups)
+   - Full application log history
+
+3. **error.log** - Error and above only
+   - Location: `logs/error.log`
+   - Rotating file handler (10MB per file, 5 backups)
+   - Quick access to errors and critical issues
+
+### Log Files
+
+```
+logs/
+├── app.log          # All logs (INFO, WARNING, ERROR, CRITICAL)
+├── app.log.1        # Rotated backup
+├── app.log.2        # Rotated backup
+├── error.log        # Errors only
+└── error.log.1      # Rotated backup
+```
+
+**Rotation:**
+- Files rotate when they reach 10MB
+- Up to 5 backup files are kept
+- Oldest backup is deleted when limit is reached
+
+### Usage in Code
+
+**Simple Usage:**
+```python
+from logger import logger
+
+def my_function():
+    logger.info("Function started")
+    try:
+        # Do something
+        logger.debug("Processing data...")
+        result = process_data()
+        logger.info(f"Processing complete: {result}")
+    except Exception as e:
+        logger.error(f"Error processing data: {str(e)}")
+        raise
+```
+
+**No Need for Setup:**
+```python
+# OLD WAY (don't do this)
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# NEW WAY (correct)
+from logger import logger
+```
+
+### Benefits
+
+1. **Consistent formatting** across all modules
+2. **Automatic timestamps** on all log entries
+3. **Centralized configuration** - change logging in one place
+4. **Automatic file rotation** - prevents log files from growing too large
+5. **Separate error logs** - easy to find critical issues
+6. **Works with pytest** - logs are captured by caplog in tests
+7. **No boilerplate** - no need to configure logging in each file
+
+### Viewing Logs
+
+**Local Development:**
+```bash
+# Watch all logs in real-time
+tail -f logs/app.log
+
+# Watch error logs only
+tail -f logs/error.log
+
+# Search logs
+grep "TMDb sync" logs/app.log
+
+# View last 100 lines
+tail -100 logs/app.log
+```
+
+**Docker:**
+```bash
+# View container logs (includes console output)
+docker logs letterbox-app
+
+# Follow logs in real-time
+docker logs -f letterbox-app
+
+# View logs from specific time
+docker logs --since 10m letterbox-app
+```
+
+**Docker Compose:**
+```bash
+# View logs
+docker-compose logs
+
+# Follow logs
+docker-compose logs -f
+
+# View specific service logs
+docker-compose logs app
+```
+
+### Log Levels
+
+- **DEBUG** - Detailed information for diagnosing problems (not currently used)
+- **INFO** - General informational messages (default level)
+- **WARNING** - Warning messages for potentially harmful situations
+- **ERROR** - Error messages for serious problems
+- **CRITICAL** - Critical messages for very serious errors
+
+### Customization
+
+To change log level, edit `logger.py`:
+
+```python
+# For more verbose logging
+logger.setLevel(logging.DEBUG)
+
+# For less verbose logging
+logger.setLevel(logging.WARNING)
+```
+
+To add custom handlers (e.g., send logs to external service):
+
+```python
+# In logger.py
+import logging
+from logging.handlers import SysLogHandler
+
+# Add syslog handler
+syslog_handler = SysLogHandler(address='/dev/log')
+syslog_handler.setLevel(logging.INFO)
+logger.addHandler(syslog_handler)
+```
+
+---
+
+## Code Quality and Linting
+
+The project includes comprehensive linting and code quality tools to maintain high code standards.
+
+### Tools
+
+**Pylint:** Python linter that checks for errors, enforces coding standards, and detects code smells.
+
+**Black:** Opinionated code formatter that ensures consistent code style.
+
+**isort:** Automatically sorts and organizes imports.
+
+**Pre-commit:** Framework for managing and maintaining pre-commit hooks that run automatically before each commit.
+
+### Configuration Files
+
+#### `.pylintrc`
+Pylint configuration with project-specific rules:
+- Line length: 120 characters
+- Disabled overly strict rules (missing docstrings, too-few-public-methods, etc.)
+- Appropriate for FastAPI and Pydantic projects
+- Custom good variable names (i, j, k, id, etc.)
+
+#### `.pre-commit-config.yaml`
+Pre-commit hooks configuration that runs:
+1. **Trailing whitespace removal**
+2. **End-of-file fixer**
+3. **YAML/JSON syntax checking**
+4. **Large file detection**
+5. **Merge conflict detection**
+6. **Black** - Code formatting
+7. **isort** - Import sorting
+8. **Pylint** - Linting (excludes tests and venv)
+9. **Pytest** - Full test suite
+
+### Running Linting Tools
+
+**Manual Commands:**
+```bash
+# Run pylint only
+make lint
+
+# Format code with black and isort
+make format
+
+# Format and then lint
+make lint-fix
+
+# Install pre-commit hooks
+make pre-commit-install
+
+# Run all pre-commit hooks manually
+make pre-commit-run
+```
+
+**Direct Tool Usage:**
+```bash
+# Activate virtual environment
+source venv/bin/activate
+
+# Run pylint on specific files
+pylint --rcfile=.pylintrc index.py
+
+# Run black formatter
+black --line-length=120 .
+
+# Run isort
+isort --profile=black --line-length=120 .
+
+# Run pylint on all source code
+pylint --rcfile=.pylintrc index.py controllers/ routers/ services/ models/ utils/ jobs/
+```
+
+### Pre-commit Hooks
+
+Pre-commit hooks run automatically before each commit to ensure code quality.
+
+**Setup (First Time):**
+```bash
+# Install dependencies
+make install
+
+# Install pre-commit hooks
+make pre-commit-install
+```
+
+**After setup, hooks run automatically on `git commit`:**
+```bash
+git add .
+git commit -m "Your commit message"
+
+# Pre-commit hooks will run:
+# 1. Check and fix trailing whitespace
+# 2. Check and fix end of files
+# 3. Check YAML/JSON syntax
+# 4. Check for large files
+# 5. Check for merge conflicts
+# 6. Format code with black
+# 7. Sort imports with isort
+# 8. Run pylint on changed files
+# 9. Run full test suite
+
+# If any hook fails, the commit is aborted
+# Fix the issues and try again
+```
+
+**Skip hooks (not recommended):**
+```bash
+# Skip all hooks (emergency only)
+git commit --no-verify -m "Emergency fix"
+```
+
+### Linting Rules
+
+**Key Pylint Rules:**
+- Maximum line length: 120 characters
+- Maximum function arguments: 10
+- Maximum local variables: 20
+- Maximum statements per function: 50
+- Maximum branches: 12
+
+**Disabled Rules:**
+- `missing-docstring` - Not all functions need docstrings
+- `invalid-name` - Allow short variable names (x, y, i, etc.)
+- `too-few-public-methods` - Common in Pydantic models
+- `too-many-arguments` - Common in FastAPI endpoints
+- `protected-access` - Sometimes needed for testing
+
+### CI/CD Integration
+
+Pre-commit hooks ensure that code is properly formatted and linted before being committed. In CI/CD pipelines, add:
+
+```yaml
+# Example GitHub Actions
+- name: Install dependencies
+  run: pip install -r requirements.txt
+
+- name: Run linting
+  run: make lint
+
+- name: Run tests
+  run: make test
+```
+
+### Best Practices
+
+1. **Always run `make lint-fix` before committing** - Formats and checks code
+2. **Install pre-commit hooks** - Automates quality checks
+3. **Don't skip hooks** - They catch issues early
+4. **Fix linting errors promptly** - Don't accumulate technical debt
+5. **Review pylint warnings** - They often catch real issues
+
+### Common Linting Issues
+
+#### Import Order
+```python
+# Bad
+import os
+from fastapi import FastAPI
+import sys
+
+# Good (after isort)
+import os
+import sys
+
+from fastapi import FastAPI
+```
+
+#### Line Length
+```python
+# Bad (>120 chars)
+def very_long_function_name_that_exceeds_limit(param1, param2, param3, param4, param5, param6, param7, param8, param9):
+    pass
+
+# Good
+def very_long_function_name_that_exceeds_limit(
+    param1, param2, param3, param4, param5, param6, param7, param8, param9
+):
+    pass
+```
+
+#### Unused Imports
+```python
+# Bad
+import os
+import sys  # unused
+
+def get_cwd():
+    return os.getcwd()
+
+# Good
+import os
+
+def get_cwd():
+    return os.getcwd()
+```
+
+---
+
 ## Troubleshooting
 
 ### Scheduler Not Starting
@@ -1778,6 +2163,21 @@ Coverage.py configuration:
 - Report exclusions (pragmas, special methods)
 - HTML report directory
 - Precision settings
+
+### .pylintrc
+Pylint linter configuration:
+- Maximum line length: 120 characters
+- Disabled overly strict rules
+- Custom good variable names
+- Appropriate limits for FastAPI/Pydantic projects
+
+### .pre-commit-config.yaml
+Pre-commit hooks configuration:
+- Standard file checks (trailing whitespace, end-of-file, etc.)
+- Black code formatting (120 char line length)
+- isort import sorting
+- Pylint linting (excludes tests/venv)
+- Pytest test execution
 
 ---
 

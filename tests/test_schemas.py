@@ -1,14 +1,9 @@
 """Tests for models/schemas.py"""
+
 import pytest
 from pydantic import ValidationError
-from models.schemas import (
-    Film,
-    UserStats,
-    UserProfileResponse,
-    WatchlistResponse,
-    TopRatedResponse,
-    UsernameValidator
-)
+
+from models.schemas import Film, TopRatedResponse, UsernameValidator, UserProfileResponse, UserStats, WatchlistResponse
 
 
 class TestFilm:
@@ -23,7 +18,7 @@ class TestFilm:
             rating=5.0,
             url="https://letterboxd.com/film/the-godfather/",
             source="letterboxd",
-            rated_date="2024-01-15"
+            rated_date="2024-01-15",
         )
 
         assert film.title == "The Godfather"
@@ -36,11 +31,7 @@ class TestFilm:
 
     def test_film_with_required_fields_only(self):
         """Test Film model with only required fields"""
-        film = Film(
-            title="Pulp Fiction",
-            slug="pulp-fiction",
-            url="https://letterboxd.com/film/pulp-fiction/"
-        )
+        film = Film(title="Pulp Fiction", slug="pulp-fiction", url="https://letterboxd.com/film/pulp-fiction/")
 
         assert film.title == "Pulp Fiction"
         assert film.slug == "pulp-fiction"
@@ -50,18 +41,14 @@ class TestFilm:
 
     def test_film_exclude_none(self):
         """Test Film model excludes None values in serialization"""
-        film = Film(
-            title="Test Film",
-            slug="test-film",
-            url="https://letterboxd.com/film/test-film/"
-        )
+        film = Film(title="Test Film", slug="test-film", url="https://letterboxd.com/film/test-film/")
 
         # Convert to dict with exclude_none
         film_dict = film.model_dump(exclude_none=True)
-        assert 'year' not in film_dict
-        assert 'rating' not in film_dict
-        assert 'source' not in film_dict
-        assert 'rated_date' not in film_dict
+        assert "year" not in film_dict
+        assert "rating" not in film_dict
+        assert "source" not in film_dict
+        assert "rated_date" not in film_dict
 
     def test_film_missing_required_field(self):
         """Test Film model fails without required fields"""
@@ -69,7 +56,7 @@ class TestFilm:
             Film(title="Test", slug="test")  # Missing url
 
         errors = exc_info.value.errors()
-        assert any(error['loc'] == ('url',) for error in errors)
+        assert any(error["loc"] == ("url",) for error in errors)
 
 
 class TestUserStats:
@@ -77,12 +64,7 @@ class TestUserStats:
 
     def test_user_stats_valid(self):
         """Test UserStats model with valid data"""
-        stats = UserStats(
-            films_watched=100,
-            lists=5,
-            following=50,
-            followers=75
-        )
+        stats = UserStats(films_watched=100, lists=5, following=50, followers=75)
 
         assert stats.films_watched == 100
         assert stats.lists == 5
@@ -91,12 +73,7 @@ class TestUserStats:
 
     def test_user_stats_zero_values(self):
         """Test UserStats model with zero values"""
-        stats = UserStats(
-            films_watched=0,
-            lists=0,
-            following=0,
-            followers=0
-        )
+        stats = UserStats(films_watched=0, lists=0, following=0, followers=0)
 
         assert stats.films_watched == 0
         assert stats.lists == 0
@@ -112,18 +89,13 @@ class TestUserProfileResponse:
 
     def test_user_profile_with_bio(self):
         """Test UserProfileResponse with bio"""
-        stats = UserStats(
-            films_watched=100,
-            lists=5,
-            following=50,
-            followers=75
-        )
+        stats = UserStats(films_watched=100, lists=5, following=50, followers=75)
         profile = UserProfileResponse(
             username="testuser",
             display_name="Test User",
             bio="Film enthusiast",
             stats=stats,
-            url="https://letterboxd.com/testuser/"
+            url="https://letterboxd.com/testuser/",
         )
 
         assert profile.username == "testuser"
@@ -134,17 +106,9 @@ class TestUserProfileResponse:
 
     def test_user_profile_without_bio(self):
         """Test UserProfileResponse without bio"""
-        stats = UserStats(
-            films_watched=50,
-            lists=0,
-            following=25,
-            followers=30
-        )
+        stats = UserStats(films_watched=50, lists=0, following=25, followers=30)
         profile = UserProfileResponse(
-            username="testuser",
-            display_name="Test User",
-            stats=stats,
-            url="https://letterboxd.com/testuser/"
+            username="testuser", display_name="Test User", stats=stats, url="https://letterboxd.com/testuser/"
         )
 
         assert profile.bio is None
@@ -154,13 +118,8 @@ class TestUserProfileResponse:
         profile = UserProfileResponse(
             username="testuser",
             display_name="Test User",
-            stats={
-                "films_watched": 100,
-                "lists": 5,
-                "following": 50,
-                "followers": 75
-            },
-            url="https://letterboxd.com/testuser/"
+            stats={"films_watched": 100, "lists": 5, "following": 50, "followers": 75},
+            url="https://letterboxd.com/testuser/",
         )
 
         assert isinstance(profile.stats, UserStats)
@@ -174,7 +133,7 @@ class TestWatchlistResponse:
         """Test WatchlistResponse with valid data"""
         films = [
             {"title": "Film A", "year": 2000, "url": "https://letterboxd.com/film/film-a/"},
-            {"title": "Film B", "year": 2010, "url": "https://letterboxd.com/film/film-b/"}
+            {"title": "Film B", "year": 2010, "url": "https://letterboxd.com/film/film-b/"},
         ]
 
         response = WatchlistResponse(
@@ -186,7 +145,7 @@ class TestWatchlistResponse:
             total_pages=3,
             has_next=True,
             has_previous=False,
-            films=films
+            films=films,
         )
 
         assert response.username == "testuser"
@@ -208,7 +167,7 @@ class TestWatchlistResponse:
             total_pages=1,
             has_next=False,
             has_previous=False,
-            films=[]
+            films=[],
         )
 
         assert response.films == []
@@ -225,7 +184,7 @@ class TestWatchlistResponse:
             total_pages=5,
             has_next=True,
             has_previous=True,
-            films=[]
+            films=[],
         )
 
         assert response.page == 3
@@ -245,15 +204,15 @@ class TestTopRatedResponse:
                 slug="the-godfather",
                 year=1972,
                 rating=5.0,
-                url="https://letterboxd.com/film/the-godfather/"
+                url="https://letterboxd.com/film/the-godfather/",
             ),
             Film(
                 title="Pulp Fiction",
                 slug="pulp-fiction",
                 year=1994,
                 rating=5.0,
-                url="https://letterboxd.com/film/pulp-fiction/"
-            )
+                url="https://letterboxd.com/film/pulp-fiction/",
+            ),
         ]
 
         response = TopRatedResponse(
@@ -265,7 +224,7 @@ class TestTopRatedResponse:
             total_pages=5,
             has_next=True,
             has_previous=False,
-            films=films
+            films=films,
         )
 
         assert response.username == "testuser"
@@ -283,7 +242,7 @@ class TestTopRatedResponse:
                 "slug": "the-godfather",
                 "year": 1972,
                 "rating": 5.0,
-                "url": "https://letterboxd.com/film/the-godfather/"
+                "url": "https://letterboxd.com/film/the-godfather/",
             }
         ]
 
@@ -296,7 +255,7 @@ class TestTopRatedResponse:
             total_pages=1,
             has_next=False,
             has_previous=False,
-            films=films_data
+            films=films_data,
         )
 
         assert isinstance(response.films[0], Film)
@@ -313,7 +272,7 @@ class TestTopRatedResponse:
             total_pages=1,
             has_next=False,
             has_previous=False,
-            films=[]
+            films=[],
         )
 
         assert response.films == []
@@ -354,7 +313,7 @@ class TestUsernameValidator:
             UsernameValidator(username="test user")
 
         errors = exc_info.value.errors()
-        assert any('pattern' in str(error) for error in errors)
+        assert any("pattern" in str(error) for error in errors)
 
     def test_invalid_username_with_special_chars(self):
         """Test username fails with special characters"""
@@ -368,7 +327,7 @@ class TestUsernameValidator:
 
         errors = exc_info.value.errors()
         # Should fail min_length validation
-        assert any(error['type'] == 'string_too_short' for error in errors)
+        assert any(error["type"] == "string_too_short" for error in errors)
 
     def test_invalid_username_whitespace_only(self):
         """Test username fails with only whitespace"""
@@ -386,7 +345,7 @@ class TestUsernameValidator:
             UsernameValidator(username=long_username)
 
         errors = exc_info.value.errors()
-        assert any(error['type'] == 'string_too_long' for error in errors)
+        assert any(error["type"] == "string_too_long" for error in errors)
 
     def test_valid_username_max_length(self):
         """Test username at maximum allowed length"""

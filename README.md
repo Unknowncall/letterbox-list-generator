@@ -13,8 +13,9 @@ A FastAPI-based service that integrates with Letterboxd to fetch user profiles, 
 - 🎯 **TMDb Sync** - Automatically sync top-rated movies to TMDb lists (one list per user)
 - 🔄 **Scheduled Jobs** - Cron-based automated syncing with configurable schedules
 - 🐳 **Docker Ready** - Production-ready Docker and Docker Compose setup
-- 🧪 **100% Test Coverage** - Comprehensive test suite with 278+ tests
+- 🧪 **100% Test Coverage** - Comprehensive test suite with 251+ tests
 - 📡 **REST API** - Well-documented API with Postman collection
+- ✨ **Code Quality** - Pre-commit hooks with pylint, black, and isort
 
 ## Quick Start
 
@@ -71,6 +72,53 @@ make test
 
 # Run tests with coverage
 make test-cov
+
+# Code quality
+make lint               # Run linting
+make format             # Format code
+make lint-fix           # Format and lint
+make pre-commit-install # Setup pre-commit hooks
+```
+
+## Code Quality
+
+The project includes comprehensive linting and code quality tools.
+
+### Pre-commit Hooks
+
+Install pre-commit hooks to automatically check code quality before each commit:
+
+```bash
+# One-time setup
+make pre-commit-install
+
+# Hooks will now run automatically on git commit
+git add .
+git commit -m "Your message"
+
+# Run manually on all files
+make pre-commit-run
+```
+
+The hooks will:
+- ✅ Format code with Black
+- ✅ Sort imports with isort
+- ✅ Run pylint on changed files
+- ✅ Run full test suite
+- ✅ Check for trailing whitespace
+- ✅ Validate YAML/JSON syntax
+
+### Linting Commands
+
+```bash
+# Run pylint
+make lint
+
+# Format code with black and isort
+make format
+
+# Format and lint in one command
+make lint-fix
 ```
 
 ## API Endpoints
@@ -226,15 +274,20 @@ uvicorn index:app --reload --host 0.0.0.0 --port 8000
 
 ### Available Make Commands
 ```bash
-make help          # Show all commands
-make install       # Setup environment
-make run           # Run with hot reload
-make test          # Run tests
-make test-cov      # Run tests with coverage
-make test-cov-html # Generate HTML coverage report
-make clean         # Clean cache files
-make docker-build  # Build Docker image
-make docker-run    # Run Docker container
+make help               # Show all commands
+make install            # Setup environment
+make run                # Run with hot reload
+make test               # Run tests
+make test-cov           # Run tests with coverage
+make test-cov-html      # Generate HTML coverage report
+make lint               # Run pylint
+make format             # Format code with black/isort
+make lint-fix           # Format and lint
+make pre-commit-install # Install pre-commit hooks
+make pre-commit-run     # Run all hooks manually
+make clean              # Clean cache files
+make docker-build       # Build Docker image
+make docker-run         # Run Docker container
 ```
 
 ### Running Tests
@@ -322,7 +375,10 @@ See `.github/GITHUB_ACTIONS_SETUP.md` for detailed instructions.
 - Write tests for new features
 - Maintain 100% test coverage
 - Follow PEP 8 style guidelines
+- Install pre-commit hooks (`make pre-commit-install`)
+- Run `make lint-fix` before committing
 - Update documentation as needed
+- All commits are automatically linted and tested
 
 ## Documentation
 
@@ -339,6 +395,7 @@ See `.github/GITHUB_ACTIONS_SETUP.md` for detailed instructions.
 - **TMDb**: tmdbapis 1.2.11
 - **Scheduler**: APScheduler 3.10.4
 - **Testing**: pytest + pytest-cov
+- **Linting**: pylint + black + isort + pre-commit
 - **Containerization**: Docker + Docker Compose
 
 ## License

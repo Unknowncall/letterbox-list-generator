@@ -1,18 +1,20 @@
 """Tests for index.py (main application)"""
+
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
 from fastapi.testclient import TestClient
 
 # Import app at module level for tests that need it
 # Mock scheduler to prevent initialization issues
-with patch('jobs.scheduler.init_scheduler'), patch('jobs.scheduler.shutdown_scheduler'):
+with patch("jobs.scheduler.init_scheduler"), patch("jobs.scheduler.shutdown_scheduler"):
     from index import app
 
 
 @pytest.fixture(scope="module")
 def test_client():
     """Create a test client with mocked scheduler"""
-    with patch('jobs.scheduler.init_scheduler'), patch('jobs.scheduler.shutdown_scheduler'):
+    with patch("jobs.scheduler.init_scheduler"), patch("jobs.scheduler.shutdown_scheduler"):
         with TestClient(app) as client:
             yield client
 
@@ -22,19 +24,19 @@ class TestHealthEndpoint:
 
     def test_health_check_success(self, test_client):
         """Test health check endpoint returns healthy status"""
-        response = test_client.get('/health')
+        response = test_client.get("/health")
 
         assert response.status_code == 200
-        assert response.json() == {'status': 'healthy'}
+        assert response.json() == {"status": "healthy"}
 
     def test_health_check_method_get(self, test_client):
         """Test health check only accepts GET requests"""
-        response = test_client.post('/health')
+        response = test_client.post("/health")
         assert response.status_code == 405  # Method not allowed
 
     def test_health_check_route_exists(self, test_client):
         """Test health check route is registered"""
-        response = test_client.get('/health')
+        response = test_client.get("/health")
         assert response.status_code != 404
 
 
@@ -50,14 +52,14 @@ class TestAppConfiguration:
         routes = [route.path for route in app.routes]
 
         # Check that user routes are registered
-        assert any('/users/{username}' in route for route in routes)
-        assert any('/users/{username}/watchlist' in route for route in routes)
-        assert any('/users/{username}/top-rated' in route for route in routes)
+        assert any("/users/{username}" in route for route in routes)
+        assert any("/users/{username}/watchlist" in route for route in routes)
+        assert any("/users/{username}/top-rated" in route for route in routes)
 
     def test_health_route_registered(self):
         """Test health route is registered"""
         routes = [route.path for route in app.routes]
-        assert '/health' in routes
+        assert "/health" in routes
 
 
 class TestLifespanEvent:
@@ -68,8 +70,8 @@ class TestLifespanEvent:
         """Test lifespan context manager calls init and shutdown"""
         from index import lifespan
 
-        with patch('index.init_scheduler') as mock_init:
-            with patch('index.shutdown_scheduler') as mock_shutdown:
+        with patch("index.init_scheduler") as mock_init:
+            with patch("index.shutdown_scheduler") as mock_shutdown:
                 # Use the lifespan context manager
                 async with lifespan(app):
                     # During the context, init should be called
@@ -82,8 +84,9 @@ class TestLifespanEvent:
     @pytest.mark.asyncio
     async def test_lifespan_function_exists(self):
         """Test that lifespan function exists"""
-        from index import lifespan
         from contextlib import AbstractAsyncContextManager
+
+        from index import lifespan
 
         # Test that lifespan is callable and returns an async context manager
         assert callable(lifespan)
@@ -100,6 +103,7 @@ class TestAtexitHandler:
         # The atexit.register call is executed at import time
         # We can verify by checking if shutdown_scheduler is callable
         from index import shutdown_scheduler
+
         assert callable(shutdown_scheduler)
 
 
@@ -111,8 +115,8 @@ class TestAppLifecycle:
         """Test complete startup and shutdown cycle using lifespan"""
         from index import lifespan
 
-        with patch('index.init_scheduler') as mock_init:
-            with patch('index.shutdown_scheduler') as mock_shutdown:
+        with patch("index.init_scheduler") as mock_init:
+            with patch("index.shutdown_scheduler") as mock_shutdown:
                 # Execute the full lifespan cycle
                 async with lifespan(app):
                     # Verify startup was called
@@ -129,26 +133,24 @@ class TestAppIntegration:
 
     def test_app_accepts_requests(self, test_client):
         """Test that app can handle requests"""
-        response = test_client.get('/health')
+        response = test_client.get("/health")
         assert response.status_code == 200
 
     def test_app_handles_404(self, test_client):
         """Test that app handles non-existent routes"""
-        response = test_client.get('/nonexistent-route')
+        response = test_client.get("/nonexistent-route")
         assert response.status_code == 404
 
     def test_app_cors_not_configured_by_default(self, test_client):
         """Test that CORS is not configured by default"""
         # FastAPI doesn't add CORS headers unless CORSMiddleware is added
-        response = test_client.get('/health')
-        assert 'access-control-allow-origin' not in [
-            key.lower() for key in response.headers.keys()
-        ]
+        response = test_client.get("/health")
+        assert "access-control-allow-origin" not in [key.lower() for key in response.headers.keys()]
 
     def test_app_json_responses(self, test_client):
         """Test that app returns JSON responses"""
-        response = test_client.get('/health')
-        assert response.headers['content-type'] == 'application/json'
+        response = test_client.get("/health")
+        assert response.headers["content-type"] == "application/json"
 
 
 class TestErrorHandling:
@@ -157,24 +159,25 @@ class TestErrorHandling:
     def test_validation_error_response_format(self, test_client):
         """Test validation error response format"""
         # Try to access endpoint with invalid username
-        response = test_client.get('/users/invalid@username')
+        response = test_client.get("/users/invalid@username")
 
         assert response.status_code == 422
         data = response.json()
-        assert 'detail' in data
+        assert "detail" in data
 
     def test_not_found_error_format(self, test_client):
         """Test 404 error response format"""
-        with patch('controllers.users.get_user_profile') as mock_get:
+        with patch("controllers.users.get_user_profile") as mock_get:
             from unittest.mock import AsyncMock
-            mock_get = AsyncMock(side_effect=ValueError('User not found'))
 
-            with patch('controllers.users.get_user_profile', mock_get):
-                response = test_client.get('/users/nonexistent')
+            mock_get = AsyncMock(side_effect=ValueError("User not found"))
+
+            with patch("controllers.users.get_user_profile", mock_get):
+                response = test_client.get("/users/nonexistent")
 
                 assert response.status_code == 404
                 data = response.json()
-                assert 'detail' in data
+                assert "detail" in data
 
 
 class TestDocumentation:
@@ -182,37 +185,37 @@ class TestDocumentation:
 
     def test_openapi_schema_available(self, test_client):
         """Test that OpenAPI schema is available"""
-        response = test_client.get('/openapi.json')
+        response = test_client.get("/openapi.json")
         assert response.status_code == 200
 
         schema = response.json()
-        assert 'openapi' in schema
-        assert 'info' in schema
-        assert schema['info']['title'] == 'Letterbox List Generator'
+        assert "openapi" in schema
+        assert "info" in schema
+        assert schema["info"]["title"] == "Letterbox List Generator"
 
     def test_docs_endpoint_available(self, test_client):
         """Test that /docs endpoint is available"""
-        response = test_client.get('/docs')
+        response = test_client.get("/docs")
         assert response.status_code == 200
 
     def test_redoc_endpoint_available(self, test_client):
         """Test that /redoc endpoint is available"""
-        response = test_client.get('/redoc')
+        response = test_client.get("/redoc")
         assert response.status_code == 200
 
     def test_openapi_has_user_routes(self, test_client):
         """Test that OpenAPI schema includes user routes"""
-        response = test_client.get('/openapi.json')
+        response = test_client.get("/openapi.json")
         schema = response.json()
 
-        paths = schema['paths']
-        assert '/users/{username}' in paths
-        assert '/users/{username}/watchlist' in paths
-        assert '/users/{username}/top-rated' in paths
+        paths = schema["paths"]
+        assert "/users/{username}" in paths
+        assert "/users/{username}/watchlist" in paths
+        assert "/users/{username}/top-rated" in paths
 
     def test_openapi_has_health_route(self, test_client):
         """Test that OpenAPI schema includes health route"""
-        response = test_client.get('/openapi.json')
+        response = test_client.get("/openapi.json")
         schema = response.json()
 
-        assert '/health' in schema['paths']
+        assert "/health" in schema["paths"]

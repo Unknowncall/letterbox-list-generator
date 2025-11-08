@@ -1,4 +1,4 @@
-.PHONY: help install dev run clean test test-verbose test-cov test-cov-html test-watch docker-build docker-run docker-stop docker-logs docker-clean docker-compose-up docker-compose-down
+.PHONY: help install dev run clean test test-verbose test-cov test-cov-html test-watch lint lint-fix format pre-commit-install pre-commit-run docker-build docker-run docker-stop docker-logs docker-clean docker-compose-up docker-compose-down
 
 # Docker configuration
 DOCKER_IMAGE_NAME=letterbox-list-generator
@@ -22,6 +22,13 @@ help:
 	@echo "  make test-cov         - Run tests with coverage report"
 	@echo "  make test-cov-html    - Run tests and generate HTML coverage report"
 	@echo "  make test-watch       - Run tests in watch mode (re-run on file changes)"
+	@echo ""
+	@echo "Linting and Code Quality:"
+	@echo "  make lint             - Run pylint on source code"
+	@echo "  make format           - Format code with black and isort"
+	@echo "  make lint-fix         - Format code and run linter"
+	@echo "  make pre-commit-install - Install pre-commit hooks"
+	@echo "  make pre-commit-run   - Run all pre-commit hooks manually"
 	@echo ""
 	@echo "Docker Commands:"
 	@echo "  make docker-build       - Build Docker image"
@@ -49,7 +56,7 @@ dev: install run
 # Start the FastAPI server with hot reload
 run:
 	@echo "Starting FastAPI server with hot reload..."
-	. venv/bin/activate && uvicorn index:app --reload --host 0.0.0.0 --port 8000
+	. venv/bin/activate && uvicorn index:app --reload --host 0.0.0.0 --port 8000 --log-config uvicorn_log_config.json
 
 # Start server without hot reload
 run-prod:
@@ -95,6 +102,43 @@ test-cov-html:
 test-watch:
 	@echo "Running tests in watch mode..."
 	. venv/bin/activate && pytest-watch
+
+# Linting and code quality commands
+
+# Run pylint on source code
+lint:
+	@echo "Running pylint..."
+	. venv/bin/activate && pylint --rcfile=.pylintrc \
+		index.py \
+		logger.py \
+		controllers/ \
+		routers/ \
+		services/ \
+		models/ \
+		utils/ \
+		jobs/
+
+# Format code with black and isort
+format:
+	@echo "Formatting code with black..."
+	. venv/bin/activate && black --line-length=120 .
+	@echo "Sorting imports with isort..."
+	. venv/bin/activate && isort --profile=black --line-length=120 .
+	@echo "Code formatting complete!"
+
+# Format and lint
+lint-fix: format lint
+
+# Install pre-commit hooks
+pre-commit-install:
+	@echo "Installing pre-commit hooks..."
+	. venv/bin/activate && pre-commit install
+	@echo "Pre-commit hooks installed!"
+
+# Run all pre-commit hooks manually
+pre-commit-run:
+	@echo "Running all pre-commit hooks..."
+	. venv/bin/activate && pre-commit run --all-files
 
 # Docker commands
 
