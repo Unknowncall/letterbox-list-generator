@@ -146,12 +146,19 @@ jobs:
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
 
+          # Check if tag actually exists
+          if git rev-parse "$LATEST_TAG" >/dev/null 2>&1; then
+            echo "has_previous_tag=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_previous_tag=false" >> $GITHUB_OUTPUT
+          fi
+
           # Increment patch version for pre-release
           VERSION=${LATEST_TAG#v}
           IFS='.' read -ra VERSION_PARTS <<< "$VERSION"
           MAJOR=${VERSION_PARTS[0]}
           MINOR=${VERSION_PARTS[1]}
-          PATCH=${VERSION_PARTS[2]}
+          PATCH=${VERSION_PARTS[2]:-0}
           NEW_PATCH=$((PATCH + 1))
           NEW_VERSION="v${MAJOR}.${MINOR}.${NEW_PATCH}-pre.${GITHUB_RUN_NUMBER}"
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
@@ -161,10 +168,22 @@ jobs:
         run: |
           echo "## Changes in this Pre-Release" > CHANGELOG.md
           echo "" >> CHANGELOG.md
-          git log ${{ steps.get_tag.outputs.latest_tag }}..HEAD --pretty=format:"- %s (%h)" >> CHANGELOG.md
-          echo "" >> CHANGELOG.md
-          echo "" >> CHANGELOG.md
-          echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ steps.get_tag.outputs.latest_tag }}...${GITHUB_SHA}" >> CHANGELOG.md
+
+          # If there's a previous tag, show changes since that tag
+          # Otherwise, show recent commits
+          if [ "${{ steps.get_tag.outputs.has_previous_tag }}" = "true" ]; then
+            git log ${{ steps.get_tag.outputs.latest_tag }}..HEAD --pretty=format:"- %s (%h)" >> CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ steps.get_tag.outputs.latest_tag }}...${GITHUB_SHA}" >> CHANGELOG.md
+          else
+            echo "Initial pre-release" >> CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            git log --max-count=20 --pretty=format:"- %s (%h)" >> CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            echo "**Full Changelog**: https://github.com/${{ github.repository }}/commits/${GITHUB_SHA}" >> CHANGELOG.md
+          fi
 
       - name: Create Pre-Release
         uses: actions/create-release@v1

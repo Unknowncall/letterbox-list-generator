@@ -51,8 +51,10 @@ When code is pushed to the `main` branch:
 2. Docker image is built and pushed ✅
 3. A pre-release is automatically created with:
    - Auto-incremented version tag (e.g., `v0.0.1-pre.123`)
-   - Changelog generated from git commits
+   - Changelog generated from git commits (all commits if no previous tag, or changes since last tag)
    - Docker images tagged as `latest-pre` and version tag
+
+**First Release**: When there are no existing tags, the workflow will create `v0.0.1-pre.1` and show the last 20 commits in the changelog.
 
 ## Creating a Full Release
 

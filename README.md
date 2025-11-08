@@ -2,7 +2,7 @@
 
 A FastAPI-based service that integrates with Letterboxd to fetch user profiles, watchlists, and top-rated movies, with automatic synchronization to TMDb lists.
 
-[![CI/CD Pipeline](https://github.com/YOUR_USERNAME/letterbox-list-generator/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/YOUR_USERNAME/letterbox-list-generator/actions/workflows/ci-cd.yml)
+[![CI/CD Pipeline](https://github.com/Unknowncall/letterbox-list-generator/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/Unknowncall/letterbox-list-generator/actions/workflows/ci-cd.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -22,7 +22,7 @@ A FastAPI-based service that integrates with Letterboxd to fetch user profiles, 
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/letterbox-list-generator.git
+git clone https://github.com/Unknowncall/letterbox-list-generator.git
 cd letterbox-list-generator
 
 # Copy and configure environment variables
@@ -47,14 +47,14 @@ Pull and run the latest image from GitHub Container Registry:
 
 ```bash
 # Pull the latest image
-docker pull ghcr.io/YOUR_USERNAME/letterbox-list-generator:latest
+docker pull ghcr.io/Unknowncall/letterbox-list-generator:latest
 
 # Run the container
 docker run -d \
   --name letterbox-list-generator \
   -p 8000:8000 \
   --env-file .env \
-  ghcr.io/YOUR_USERNAME/letterbox-list-generator:latest
+  ghcr.io/Unknowncall/letterbox-list-generator:latest
 ```
 
 ### Local Development
