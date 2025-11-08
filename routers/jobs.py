@@ -6,7 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from jobs.sync_to_tmdb import get_tmdb_config, run_sync_job
-from logger import logger
+from utils.logger import logger
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 

@@ -110,7 +110,6 @@ lint:
 	@echo "Running pylint..."
 	. venv/bin/activate && pylint --rcfile=.pylintrc \
 		index.py \
-		logger.py \
 		controllers/ \
 		routers/ \
 		services/ \

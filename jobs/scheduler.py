@@ -9,7 +9,7 @@ from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv
 
 from jobs.sync_to_tmdb import run_sync_job
-from logger import logger
+from utils.logger import logger
 
 # Load environment variables
 load_dotenv()

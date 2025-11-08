@@ -8,8 +8,8 @@ from typing import Dict, List
 from dotenv import load_dotenv
 
 from controllers.users import get_top_rated_films
-from logger import logger
 from services.tmdb_service import TMDbService
+from utils.logger import logger
 
 # Load environment variables
 load_dotenv()

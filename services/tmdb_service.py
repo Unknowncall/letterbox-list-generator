@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 
 from tmdbapis import TMDbAPIs
 
-from logger import logger
+from utils.logger import logger
 
 
 class TMDbService:
