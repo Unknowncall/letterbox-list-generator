@@ -1,0 +1,339 @@
+{
+	"info": {
+		"name": "Letterbox List Generator API",
+		"description": "API for fetching and managing Letterboxd user data including profiles, watchlists, and top-rated films. All list endpoints support pagination.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"version": "1.0.0"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/health",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"health"
+					]
+				},
+				"description": "Health check endpoint to verify the API is running and accessible.\n\n**Returns:**\n- `status`: \"healthy\""
+			},
+			"response": []
+		},
+		{
+			"name": "Get User Profile",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/users/{{username}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"users",
+						"{{username}}"
+					]
+				},
+				"description": "Get a Letterboxd user's profile information.\n\n**Path Parameters:**\n- `username`: Letterboxd username (alphanumeric, hyphens, underscores only)\n\n**Returns:**\n- `username`: The username\n- `display_name`: User's display name\n- `bio`: User's biography text\n- `stats`: Object containing:\n  - `films_watched`: Total films watched all-time\n  - `lists`: Number of lists (currently 0)\n  - `following`: Number of users followed\n  - `followers`: Number of followers\n- `url`: Letterboxd profile URL"
+			},
+			"response": []
+		},
+		{
+			"name": "Get User Watchlist (Default Pagination)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/users/{{username}}/watchlist?page=1&page_size=20&sort_by=title&sort_order=asc",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"users",
+						"{{username}}",
+						"watchlist"
+					],
+					"query": [
+						{
+							"key": "page",
+							"value": "1",
+							"description": "Page number (default: 1)"
+						},
+						{
+							"key": "page_size",
+							"value": "20",
+							"description": "Number of films per page (1-100, default: 20)"
+						},
+						{
+							"key": "sort_by",
+							"value": "title",
+							"description": "Sort field: title or year (default: title)"
+						},
+						{
+							"key": "sort_order",
+							"value": "asc",
+							"description": "Sort order: asc or desc (default: asc)"
+						}
+					]
+				},
+				"description": "Get a user's watchlist with default pagination.\n\n**Path Parameters:**\n- `username`: Letterboxd username\n\n**Query Parameters:**\n- `page`: Page number, starting at 1 (default: 1)\n- `page_size`: Items per page, 1-100 (default: 20)\n- `limit`: Optional - restrict total dataset before pagination (1-1000)\n- `sort_by`: Field to sort by - `title` or `year` (default: title)\n- `sort_order`: Sort direction - `asc` or `desc` (default: asc)\n\n**Returns:**\n- `username`: The username\n- `total_watchlist`: Total number of films in watchlist (before any limit)\n- `films_count`: Number of films in current page\n- `page`: Current page number\n- `page_size`: Items per page\n- `total_pages`: Total number of pages available\n- `has_next`: Boolean - true if more pages exist\n- `has_previous`: Boolean - true if previous pages exist\n- `films`: Array of film objects:\n  - `title`: Film title\n  - `year`: Release year\n  - `url`: Letterboxd film URL"
+			},
+			"response": []
+		},
+		{
+			"name": "Get User Watchlist (With Limit)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/users/{{username}}/watchlist?limit=50&page=1&page_size=25&sort_by=year&sort_order=desc",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"users",
+						"{{username}}",
+						"watchlist"
+					],
+					"query": [
+						{
+							"key": "limit",
+							"value": "50",
+							"description": "Limit to first 50 films before pagination"
+						},
+						{
+							"key": "page",
+							"value": "1",
+							"description": "Page number"
+						},
+						{
+							"key": "page_size",
+							"value": "25",
+							"description": "25 films per page"
+						},
+						{
+							"key": "sort_by",
+							"value": "year",
+							"description": "Sort by year"
+						},
+						{
+							"key": "sort_order",
+							"value": "desc",
+							"description": "Newest first"
+						}
+					]
+				},
+				"description": "Example: Get first 50 films from watchlist sorted by year (newest first), paginated at 25 per page.\n\nThe `limit` parameter restricts the total dataset to the first N films, then pagination is applied to that subset. This example also demonstrates sorting by year in descending order."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Top Rated Films (Default Pagination)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/users/{{username}}/top-rated?page=1&page_size=20&sort_by=rating&sort_order=desc",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"users",
+						"{{username}}",
+						"top-rated"
+					],
+					"query": [
+						{
+							"key": "page",
+							"value": "1",
+							"description": "Page number (default: 1)"
+						},
+						{
+							"key": "page_size",
+							"value": "20",
+							"description": "Number of films per page (1-100, default: 20)"
+						},
+						{
+							"key": "sort_by",
+							"value": "rating",
+							"description": "Sort field: rating, title, or year (default: rating)"
+						},
+						{
+							"key": "sort_order",
+							"value": "desc",
+							"description": "Sort order: asc or desc (default: desc)"
+						}
+					]
+				},
+				"description": "Get a user's top-rated films with default pagination.\n\n**Important:** This endpoint returns only films that are BOTH rated AND liked by the user.\n\n**Path Parameters:**\n- `username`: Letterboxd username\n\n**Query Parameters:**\n- `page`: Page number, starting at 1 (default: 1)\n- `page_size`: Items per page, 1-100 (default: 20)\n- `limit`: Optional - restrict total dataset before pagination (1-1000)\n- `sort_by`: Field to sort by - `rating`, `title`, or `year` (default: rating)\n- `sort_order`: Sort direction - `asc` or `desc` (default: desc for rating)\n\n**Returns:**\n- `username`: The username\n- `total_rated`: Total number of rated AND liked films (before any limit)\n- `films_count`: Number of films in current page\n- `page`: Current page number\n- `page_size`: Items per page\n- `total_pages`: Total number of pages available\n- `has_next`: Boolean - true if more pages exist\n- `has_previous`: Boolean - true if previous pages exist\n- `films`: Array of film objects:\n  - `title`: Film title\n  - `slug`: Letterboxd slug identifier\n  - `url`: Letterboxd film URL\n  - `rating`: Star rating (0.5 to 5.0 in 0.5 increments)\n  - `year`: Release year"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Top Rated Films (Top 50)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/users/{{username}}/top-rated?limit=50&page=1&page_size=20&sort_by=rating&sort_order=desc",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"users",
+						"{{username}}",
+						"top-rated"
+					],
+					"query": [
+						{
+							"key": "limit",
+							"value": "50",
+							"description": "Limit to top 50 rated films"
+						},
+						{
+							"key": "page",
+							"value": "1",
+							"description": "Page number"
+						},
+						{
+							"key": "page_size",
+							"value": "20",
+							"description": "20 films per page"
+						},
+						{
+							"key": "sort_by",
+							"value": "rating",
+							"description": "Sort by rating (highest first)"
+						},
+						{
+							"key": "sort_order",
+							"value": "desc",
+							"description": "Descending order"
+						}
+					]
+				},
+				"description": "Example: Get user's top 50 rated and liked films sorted by rating (highest first), paginated at 20 per page.\n\nThis will result in 3 pages (20 + 20 + 10). The `limit` parameter restricts the dataset to only the top N highest-rated films before pagination is applied."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Top Rated Films (Page 2)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/users/{{username}}/top-rated?page=2&page_size=20&sort_by=title&sort_order=asc",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"users",
+						"{{username}}",
+						"top-rated"
+					],
+					"query": [
+						{
+							"key": "page",
+							"value": "2",
+							"description": "Get second page"
+						},
+						{
+							"key": "page_size",
+							"value": "20",
+							"description": "20 films per page"
+						},
+						{
+							"key": "sort_by",
+							"value": "title",
+							"description": "Sort by title alphabetically"
+						},
+						{
+							"key": "sort_order",
+							"value": "asc",
+							"description": "Ascending order (A-Z)"
+						}
+					]
+				},
+				"description": "Example: Navigate to page 2 of top-rated films sorted alphabetically by title.\n\nDemonstrates pagination navigation and alternative sorting (by title instead of rating). Check the `has_next` and `has_previous` fields in the response to determine if more pages are available."
+			},
+			"response": []
+		},
+		{
+			"name": "Trigger TMDb Sync Job",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"usernames\": [\"{{username}}\"]\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/jobs/sync-tmdb",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"jobs",
+						"sync-tmdb"
+					]
+				},
+				"description": "Trigger an on-demand TMDb sync job for specified Letterboxd users.\n\n**Creates one TMDb list per user** containing their top-rated and liked movies.\n\n**Requirements:**\n- `TMDB_SYNC_ENABLED=true` in .env\n- `TMDB_API_KEY` configured\n- `TMDB_V4_ACCESS_TOKEN` configured with write permissions\n\n**Request Body:**\n```json\n{\n  \"usernames\": [\"ian_fried\", \"username2\"]\n}\n```\n\n**Process:**\n1. For each username, fetches top 100 rated & liked films from Letterboxd\n2. Creates TMDb list if doesn't exist (named \"{username}'s Top Rated Movies\")\n3. Clears existing list and adds current top-rated films\n4. Saves list mapping to `tmdb_list_mappings.json` for reuse\n\n**Returns:**\n- `message`: Confirmation message\n- `usernames`: List of usernames being processed\n- `job_started`: Boolean indicating if job was queued\n\n**Status Codes:**\n- `200`: Job successfully queued\n- `422`: Invalid username format or empty list\n- `503`: TMDb sync disabled or credentials not configured\n\n**Notes:**\n- Job runs in background, returns immediately\n- Check server logs for detailed sync results\n- Each user gets their own separate TMDb list\n- Lists are cleared and repopulated on each sync (ensures freshness)"
+			},
+			"response": []
+		},
+		{
+			"name": "Trigger TMDb Sync (Multiple Users)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"usernames\": [\"ian_fried\", \"username2\", \"username3\"]\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/jobs/sync-tmdb",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"jobs",
+						"sync-tmdb"
+					]
+				},
+				"description": "Example: Trigger TMDb sync for multiple users at once.\n\nEach user will get their own TMDb list:\n- `ian_fried's Top Rated Movies`\n- `username2's Top Rated Movies`\n- `username3's Top Rated Movies`\n\nThe job processes all users sequentially. If one user fails, others continue processing. Check logs for per-user results."
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string",
+			"description": "Base URL for the API server"
+		},
+		{
+			"key": "username",
+			"value": "ian_fried",
+			"type": "string",
+			"description": "Default Letterboxd username for testing"
+		}
+	]
+}

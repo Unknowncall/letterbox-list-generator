@@ -1,0 +1,14 @@
+/venv/
+__pycache__
+.env
+
+# Test coverage
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+coverage.xml
+*.cover
+
+# TMDb list mappings (user-specific data)
+tmdb_list_mappings.json
