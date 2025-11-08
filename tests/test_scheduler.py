@@ -268,8 +268,8 @@ class TestInitScheduler:
 
             # Verify job configuration
             call_kwargs = mock_scheduler.add_job.call_args[1]
-            assert call_kwargs['id'] == 'fetch_top_movies'
-            assert call_kwargs['name'] == 'Fetch Top 15 Movies'
+            assert call_kwargs['id'] == 'sync_to_tmdb'
+            assert call_kwargs['name'] == 'Sync Top Rated Movies to TMDb'
             assert call_kwargs['replace_existing'] is True
             assert call_kwargs['misfire_grace_time'] == 3600
             assert call_kwargs['args'] == [['user1', 'user2']]
