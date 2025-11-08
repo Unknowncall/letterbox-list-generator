@@ -196,6 +196,9 @@ jobs:
           draft: false
           prerelease: true
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Docker meta for pre-release
         id: docker_meta_prerelease
         uses: docker/metadata-action@v5
